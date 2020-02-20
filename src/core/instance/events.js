@@ -135,7 +135,7 @@ export function eventsMixin (Vue: Class<Component>) {
       const args = toArray(arguments, 1)
       const info = `event handler for "${event}"`
       for (let i = 0, l = cbs.length; i < l; i++) {
-        invokeWithErrorHandling(cbs[i], vm, args, vm, info)
+        invokeWithErrorHandling(cbs[i], vm, args, vm, info, Vue.contextManager.getContext())
       }
     }
     return vm

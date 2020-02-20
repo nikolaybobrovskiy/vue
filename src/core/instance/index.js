@@ -5,6 +5,11 @@ import { eventsMixin } from './events'
 import { lifecycleMixin } from './lifecycle'
 import { warn } from '../util/index'
 
+Vue.contextManager = {
+  getContext: function() {},
+  setContext: function() {}
+};
+
 function Vue (options) {
   if (process.env.NODE_ENV !== 'production' &&
     !(this instanceof Vue)

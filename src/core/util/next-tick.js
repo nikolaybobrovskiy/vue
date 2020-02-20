@@ -4,6 +4,7 @@
 import { noop } from 'shared/util'
 import { handleError } from './error'
 import { isIE, isIOS, isNative } from './env'
+import Vue from '../instance/index';
 
 export let isUsingMicroTask = false
 
@@ -84,14 +85,19 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
   }
 }
 
-export function nextTick (cb?: Function, ctx?: Object) {
+export function nextTick (cb?: Function, ctx?: Object, callingContext?: Object) {
   let _resolve
+  let capturedContext = callingContext || ctx && ctx._capturedContext;
   callbacks.push(() => {
     if (cb) {
+      let prevContext = Vue.contextManager.getContext();
+      Vue.contextManager.setContext(capturedContext);
       try {
         cb.call(ctx)
       } catch (e) {
         handleError(e, ctx, 'nextTick')
+      } finally {
+        Vue.contextManager.setContext(prevContext);
       }
     } else if (_resolve) {
       _resolve(ctx)

@@ -1,6 +1,6 @@
 /*!
  * Vue.js v2.6.10
- * (c) 2014-2019 Evan You
+ * (c) 2014-2020 Evan You
  * Released under the MIT License.
  */
 /*  */
@@ -737,7 +737,7 @@ class Dep {
   notify () {
     // stabilize the subscriber list first
     const subs = this.subs.slice();
-    if (!config.async) {
+    if ( !config.async) {
       // subs aren't sorted in scheduler if not running async
       // we need to sort them now to make sure they fire in correct
       // order
@@ -973,7 +973,7 @@ class Observer {
   walk (obj) {
     const keys = Object.keys(obj);
     for (let i = 0; i < keys.length; i++) {
-      defineReactive$$1(obj, keys[i]);
+      defineReactive(obj, keys[i]);
     }
   }
 
@@ -1041,7 +1041,7 @@ function observe (value, asRootData) {
 /**
  * Define a reactive property on an Object.
  */
-function defineReactive$$1 (
+function defineReactive (
   obj,
   key,
   val,
@@ -1086,7 +1086,7 @@ function defineReactive$$1 (
         return
       }
       /* eslint-enable no-self-compare */
-      if (customSetter) {
+      if ( customSetter) {
         customSetter();
       }
       // #7981: for accessor properties without setter
@@ -1108,7 +1108,8 @@ function defineReactive$$1 (
  * already exist.
  */
 function set (target, key, val) {
-  if (isUndef(target) || isPrimitive(target)
+  if (
+    (isUndef(target) || isPrimitive(target))
   ) {
     warn(`Cannot set reactive property on undefined, null, or primitive value: ${(target)}`);
   }
@@ -1123,7 +1124,7 @@ function set (target, key, val) {
   }
   const ob = (target).__ob__;
   if (target._isVue || (ob && ob.vmCount)) {
-    warn(
+     warn(
       'Avoid adding reactive properties to a Vue instance or its root $data ' +
       'at runtime - declare it upfront in the data option.'
     );
@@ -1133,7 +1134,7 @@ function set (target, key, val) {
     target[key] = val;
     return val
   }
-  defineReactive$$1(ob.value, key, val);
+  defineReactive(ob.value, key, val);
   ob.dep.notify();
   return val
 }
@@ -1142,7 +1143,8 @@ function set (target, key, val) {
  * Delete a property and trigger change if necessary.
  */
 function del (target, key) {
-  if (isUndef(target) || isPrimitive(target)
+  if (
+    (isUndef(target) || isPrimitive(target))
   ) {
     warn(`Cannot delete reactive property on undefined, null, or primitive value: ${(target)}`);
   }
@@ -1152,7 +1154,7 @@ function del (target, key) {
   }
   const ob = (target).__ob__;
   if (target._isVue || (ob && ob.vmCount)) {
-    warn(
+     warn(
       'Avoid deleting properties on a Vue instance or its root $data ' +
       '- just set it to null.'
     );
@@ -1288,7 +1290,7 @@ strats.data = function (
 ) {
   if (!vm) {
     if (childVal && typeof childVal !== 'function') {
-      warn(
+       warn(
         'The "data" option should be a function ' +
         'that returns a per-instance value in component ' +
         'definitions.',
@@ -1351,7 +1353,7 @@ function mergeAssets (
 ) {
   const res = Object.create(parentVal || null);
   if (childVal) {
-    assertObjectType(key, childVal, vm);
+     assertObjectType(key, childVal, vm);
     return extend(res, childVal)
   } else {
     return res
@@ -1526,9 +1528,9 @@ function normalizeDirectives (options) {
   const dirs = options.directives;
   if (dirs) {
     for (const key in dirs) {
-      const def$$1 = dirs[key];
-      if (typeof def$$1 === 'function') {
-        dirs[key] = { bind: def$$1, update: def$$1 };
+      const def = dirs[key];
+      if (typeof def === 'function') {
+        dirs[key] = { bind: def, update: def };
       }
     }
   }
@@ -1621,7 +1623,7 @@ function resolveAsset (
   if (hasOwn(assets, PascalCaseId)) return assets[PascalCaseId]
   // fallback to prototype chain
   const res = assets[id] || assets[camelizedId] || assets[PascalCaseId];
-  if (warnMissing && !res) {
+  if ( warnMissing && !res) {
     warn(
       'Failed to resolve ' + type.slice(0, -1) + ': ' + id,
       options
@@ -1683,7 +1685,7 @@ function getPropDefaultValue (vm, prop, key) {
   }
   const def = prop.default;
   // warn against non-factory defaults for Object & Array
-  if (isObject(def)) {
+  if ( isObject(def)) {
     warn(
       'Invalid default value for prop "' + key + '": ' +
       'Props with type Object/Array must use a factory function ' +
@@ -1849,215 +1851,6 @@ function isBoolean (...args) {
   return args.some(elem => elem.toLowerCase() === 'boolean')
 }
 
-/*  */
-
-function handleError (err, vm, info) {
-  // Deactivate deps tracking while processing error handler to avoid possible infinite rendering.
-  // See: https://github.com/vuejs/vuex/issues/1505
-  pushTarget();
-  try {
-    if (vm) {
-      let cur = vm;
-      while ((cur = cur.$parent)) {
-        const hooks = cur.$options.errorCaptured;
-        if (hooks) {
-          for (let i = 0; i < hooks.length; i++) {
-            try {
-              const capture = hooks[i].call(cur, err, vm, info) === false;
-              if (capture) return
-            } catch (e) {
-              globalHandleError(e, cur, 'errorCaptured hook');
-            }
-          }
-        }
-      }
-    }
-    globalHandleError(err, vm, info);
-  } finally {
-    popTarget();
-  }
-}
-
-function invokeWithErrorHandling (
-  handler,
-  context,
-  args,
-  vm,
-  info
-) {
-  let res;
-  try {
-    res = args ? handler.apply(context, args) : handler.call(context);
-    if (res && !res._isVue && isPromise(res) && !res._handled) {
-      res.catch(e => handleError(e, vm, info + ` (Promise/async)`));
-      // issue #9511
-      // avoid catch triggering multiple times when nested calls
-      res._handled = true;
-    }
-  } catch (e) {
-    handleError(e, vm, info);
-  }
-  return res
-}
-
-function globalHandleError (err, vm, info) {
-  if (config.errorHandler) {
-    try {
-      return config.errorHandler.call(null, err, vm, info)
-    } catch (e) {
-      // if the user intentionally throws the original error in the handler,
-      // do not log it twice
-      if (e !== err) {
-        logError(e, null, 'config.errorHandler');
-      }
-    }
-  }
-  logError(err, vm, info);
-}
-
-function logError (err, vm, info) {
-  {
-    warn(`Error in ${info}: "${err.toString()}"`, vm);
-  }
-  /* istanbul ignore else */
-  if ((inBrowser || inWeex) && typeof console !== 'undefined') {
-    console.error(err);
-  } else {
-    throw err
-  }
-}
-
-/*  */
-
-let isUsingMicroTask = false;
-
-const callbacks = [];
-let pending = false;
-
-function flushCallbacks () {
-  pending = false;
-  const copies = callbacks.slice(0);
-  callbacks.length = 0;
-  for (let i = 0; i < copies.length; i++) {
-    copies[i]();
-  }
-}
-
-// Here we have async deferring wrappers using microtasks.
-// In 2.5 we used (macro) tasks (in combination with microtasks).
-// However, it has subtle problems when state is changed right before repaint
-// (e.g. #6813, out-in transitions).
-// Also, using (macro) tasks in event handler would cause some weird behaviors
-// that cannot be circumvented (e.g. #7109, #7153, #7546, #7834, #8109).
-// So we now use microtasks everywhere, again.
-// A major drawback of this tradeoff is that there are some scenarios
-// where microtasks have too high a priority and fire in between supposedly
-// sequential events (e.g. #4521, #6690, which have workarounds)
-// or even between bubbling of the same event (#6566).
-let timerFunc;
-
-// The nextTick behavior leverages the microtask queue, which can be accessed
-// via either native Promise.then or MutationObserver.
-// MutationObserver has wider support, however it is seriously bugged in
-// UIWebView in iOS >= 9.3.3 when triggered in touch event handlers. It
-// completely stops working after triggering a few times... so, if native
-// Promise is available, we will use it:
-/* istanbul ignore next, $flow-disable-line */
-if (typeof Promise !== 'undefined' && isNative(Promise)) {
-  const p = Promise.resolve();
-  timerFunc = () => {
-    p.then(flushCallbacks);
-    // In problematic UIWebViews, Promise.then doesn't completely break, but
-    // it can get stuck in a weird state where callbacks are pushed into the
-    // microtask queue but the queue isn't being flushed, until the browser
-    // needs to do some other work, e.g. handle a timer. Therefore we can
-    // "force" the microtask queue to be flushed by adding an empty timer.
-    if (isIOS) setTimeout(noop);
-  };
-  isUsingMicroTask = true;
-} else if (!isIE && typeof MutationObserver !== 'undefined' && (
-  isNative(MutationObserver) ||
-  // PhantomJS and iOS 7.x
-  MutationObserver.toString() === '[object MutationObserverConstructor]'
-)) {
-  // Use MutationObserver where native Promise is not available,
-  // e.g. PhantomJS, iOS7, Android 4.4
-  // (#6466 MutationObserver is unreliable in IE11)
-  let counter = 1;
-  const observer = new MutationObserver(flushCallbacks);
-  const textNode = document.createTextNode(String(counter));
-  observer.observe(textNode, {
-    characterData: true
-  });
-  timerFunc = () => {
-    counter = (counter + 1) % 2;
-    textNode.data = String(counter);
-  };
-  isUsingMicroTask = true;
-} else if (typeof setImmediate !== 'undefined' && isNative(setImmediate)) {
-  // Fallback to setImmediate.
-  // Techinically it leverages the (macro) task queue,
-  // but it is still a better choice than setTimeout.
-  timerFunc = () => {
-    setImmediate(flushCallbacks);
-  };
-} else {
-  // Fallback to setTimeout.
-  timerFunc = () => {
-    setTimeout(flushCallbacks, 0);
-  };
-}
-
-function nextTick (cb, ctx) {
-  let _resolve;
-  callbacks.push(() => {
-    if (cb) {
-      try {
-        cb.call(ctx);
-      } catch (e) {
-        handleError(e, ctx, 'nextTick');
-      }
-    } else if (_resolve) {
-      _resolve(ctx);
-    }
-  });
-  if (!pending) {
-    pending = true;
-    timerFunc();
-  }
-  // $flow-disable-line
-  if (!cb && typeof Promise !== 'undefined') {
-    return new Promise(resolve => {
-      _resolve = resolve;
-    })
-  }
-}
-
-/*  */
-
-let mark;
-let measure;
-
-{
-  const perf = inBrowser && window.performance;
-  /* istanbul ignore if */
-  if (
-    perf &&
-    perf.mark &&
-    perf.measure &&
-    perf.clearMarks &&
-    perf.clearMeasures
-  ) {
-    mark = tag => perf.mark(tag);
-    measure = (name, startTag, endTag) => {
-      perf.measure(name, startTag, endTag);
-      perf.clearMarks(startTag);
-      perf.clearMarks(endTag);
-      // perf.clearMeasures(name)
-    };
-  }
-}
-
 /* not type checking this file because flow doesn't play well with Proxy */
 
 let initProxy;
@@ -2183,18 +1976,41 @@ function _traverse (val, seen) {
   }
 }
 
+let mark;
+let measure;
+
+{
+  const perf = inBrowser && window.performance;
+  /* istanbul ignore if */
+  if (
+    perf &&
+    perf.mark &&
+    perf.measure &&
+    perf.clearMarks &&
+    perf.clearMeasures
+  ) {
+    mark = tag => perf.mark(tag);
+    measure = (name, startTag, endTag) => {
+      perf.measure(name, startTag, endTag);
+      perf.clearMarks(startTag);
+      perf.clearMarks(endTag);
+      // perf.clearMeasures(name)
+    };
+  }
+}
+
 /*  */
 
 const normalizeEvent = cached((name) => {
   const passive = name.charAt(0) === '&';
   name = passive ? name.slice(1) : name;
-  const once$$1 = name.charAt(0) === '~'; // Prefixed last, checked first
-  name = once$$1 ? name.slice(1) : name;
+  const once = name.charAt(0) === '~'; // Prefixed last, checked first
+  name = once ? name.slice(1) : name;
   const capture = name.charAt(0) === '!';
   name = capture ? name.slice(1) : name;
   return {
     name,
-    once: once$$1,
+    once,
     capture,
     passive
   }
@@ -2221,17 +2037,17 @@ function updateListeners (
   on,
   oldOn,
   add,
-  remove$$1,
+  remove,
   createOnceHandler,
   vm
 ) {
-  let name, def$$1, cur, old, event;
+  let name, def, cur, old, event;
   for (name in on) {
-    def$$1 = cur = on[name];
+    def = cur = on[name];
     old = oldOn[name];
     event = normalizeEvent(name);
     if (isUndef(cur)) {
-      warn(
+       warn(
         `Invalid handler for event "${event.name}": got ` + String(cur),
         vm
       );
@@ -2251,7 +2067,7 @@ function updateListeners (
   for (name in oldOn) {
     if (isUndef(on[name])) {
       event = normalizeEvent(name);
-      remove$$1(event.name, oldOn[name], event.capture);
+      remove(event.name, oldOn[name], event.capture);
     }
   }
 }
@@ -2463,7 +2279,7 @@ function initInjections (vm) {
     Object.keys(result).forEach(key => {
       /* istanbul ignore else */
       {
-        defineReactive$$1(vm, key, result[key], () => {
+        defineReactive(vm, key, result[key], () => {
           warn(
             `Avoid mutating an injected value directly since the changes will be ` +
             `overwritten whenever the provided component re-renders. ` +
@@ -2706,7 +2522,7 @@ function renderSlot (
   if (scopedSlotFn) { // scoped slot
     props = props || {};
     if (bindObject) {
-      if (!isObject(bindObject)) {
+      if ( !isObject(bindObject)) {
         warn(
           'slot v-bind without argument expects an Object',
           this
@@ -2782,7 +2598,7 @@ function bindObjectProps (
 ) {
   if (value) {
     if (!isObject(value)) {
-      warn(
+       warn(
         'v-bind without argument expects an Object or Array value',
         this
       );
@@ -2888,7 +2704,7 @@ function markStaticNode (node, key, isOnce) {
 function bindObjectListeners (data, value) {
   if (value) {
     if (!isPlainObject(value)) {
-      warn(
+       warn(
         'v-on without argument expects an Object value',
         this
       );
@@ -2939,7 +2755,7 @@ function bindDynamicKeys (baseObj, values) {
     const key = values[i];
     if (typeof key === 'string' && key) {
       baseObj[values[i]] = values[i + 1];
-    } else if (key !== '' && key !== null) {
+    } else if ( key !== '' && key !== null) {
       // null is a speical value for explicitly removing a binding
       warn(
         `Invalid value for dynamic directive argument (expected string or null): ${key}`,
@@ -3117,12 +2933,6 @@ function mergeProps (to, from) {
     to[camelize(key)] = from[key];
   }
 }
-
-/*  */
-
-/*  */
-
-/*  */
 
 /*  */
 
@@ -3387,7 +3197,7 @@ function _createElement (
   normalizationType
 ) {
   if (isDef(data) && isDef((data).__ob__)) {
-    warn(
+     warn(
       `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
       'Always create fresh vnode data objects in each render!',
       context
@@ -3403,7 +3213,8 @@ function _createElement (
     return createEmptyVNode()
   }
   // warn against non-primitive key
-  if (isDef(data) && isDef(data.key) && !isPrimitive(data.key)
+  if (
+    isDef(data) && isDef(data.key) && !isPrimitive(data.key)
   ) {
     {
       warn(
@@ -3518,10 +3329,10 @@ function initRender (vm) {
 
   /* istanbul ignore else */
   {
-    defineReactive$$1(vm, '$attrs', parentData && parentData.attrs || emptyObject, () => {
+    defineReactive(vm, '$attrs', parentData && parentData.attrs || emptyObject, () => {
       !isUpdatingChildComponent && warn(`$attrs is readonly.`, vm);
     }, true);
-    defineReactive$$1(vm, '$listeners', options._parentListeners || emptyObject, () => {
+    defineReactive(vm, '$listeners', options._parentListeners || emptyObject, () => {
       !isUpdatingChildComponent && warn(`$listeners is readonly.`, vm);
     }, true);
   }
@@ -3534,7 +3345,7 @@ function renderMixin (Vue) {
   installRenderHelpers(Vue.prototype);
 
   Vue.prototype.$nextTick = function (fn) {
-    return nextTick(fn, this)
+    return nextTick(fn, this, Vue.contextManager.getContext())
   };
 
   Vue.prototype._render = function () {
@@ -3565,7 +3376,7 @@ function renderMixin (Vue) {
       // return error render result,
       // or previous vnode to prevent render error causing blank component
       /* istanbul ignore else */
-      if (vm.$options.renderError) {
+      if ( vm.$options.renderError) {
         try {
           vnode = vm.$options.renderError.call(vm._renderProxy, vm.$createElement, e);
         } catch (e) {
@@ -3584,7 +3395,7 @@ function renderMixin (Vue) {
     }
     // return empty vnode in case the render function errored out
     if (!(vnode instanceof VNode)) {
-      if (Array.isArray(vnode)) {
+      if ( Array.isArray(vnode)) {
         warn(
           'Multiple root nodes returned from render function. Render function ' +
           'should return a single root node.',
@@ -3687,7 +3498,7 @@ function resolveAsyncComponent (
     });
 
     const reject = once(reason => {
-      warn(
+       warn(
         `Failed to resolve async component: ${String(factory)}` +
         (reason ? `\nReason: ${reason}` : '')
       );
@@ -3732,7 +3543,8 @@ function resolveAsyncComponent (
             timerTimeout = null;
             if (isUndef(factory.resolved)) {
               reject(
-                `timeout (${res.timeout}ms)`
+                 `timeout (${res.timeout}ms)`
+                  
               );
             }
           }, res.timeout);
@@ -3766,8 +3578,6 @@ function getFirstComponentChild (children) {
     }
   }
 }
-
-/*  */
 
 /*  */
 
@@ -3897,7 +3707,7 @@ function eventsMixin (Vue) {
       const args = toArray(arguments, 1);
       const info = `event handler for "${event}"`;
       for (let i = 0, l = cbs.length; i < l; i++) {
-        invokeWithErrorHandling(cbs[i], vm, args, vm, info);
+        invokeWithErrorHandling(cbs[i], vm, args, vm, info, Vue.contextManager.getContext());
       }
     }
     return vm
@@ -4056,7 +3866,7 @@ function mountComponent (
 
   let updateComponent;
   /* istanbul ignore if */
-  if (config.performance && mark) {
+  if ( config.performance && mark) {
     updateComponent = () => {
       const name = vm._name;
       const id = vm._uid;
@@ -4075,7 +3885,13 @@ function mountComponent (
     };
   } else {
     updateComponent = () => {
-      vm._update(vm._render(), hydrating);
+      let prevContext = Vue.contextManager.getContext();
+      Vue.contextManager.setContext(vm && vm._capturedContext);
+      try {
+        vm._update(vm._render(), hydrating);
+      } finally {
+        Vue.contextManager.setContext(prevContext);
+      }
     };
   }
 
@@ -4321,7 +4137,7 @@ function flushSchedulerQueue () {
     has[id] = null;
     watcher.run();
     // in dev build, check and stop circular updates.
-    if (has[id] != null) {
+    if ( has[id] != null) {
       circular[id] = (circular[id] || 0) + 1;
       if (circular[id] > MAX_UPDATE_COUNT) {
         warn(
@@ -4407,7 +4223,7 @@ function queueWatcher (watcher) {
     if (!waiting) {
       waiting = true;
 
-      if (!config.async) {
+      if ( !config.async) {
         flushSchedulerQueue();
         return
       }
@@ -4420,7 +4236,7 @@ function queueWatcher (watcher) {
 
 
 
-let uid$2 = 0;
+let uid$1 = 0;
 
 /**
  * A watcher parses an expression, collects dependencies,
@@ -4469,14 +4285,15 @@ class Watcher {
       this.deep = this.user = this.lazy = this.sync = false;
     }
     this.cb = cb;
-    this.id = ++uid$2; // uid for batching
+    this.id = ++uid$1; // uid for batching
     this.active = true;
     this.dirty = this.lazy; // for lazy watchers
     this.deps = [];
     this.newDeps = [];
     this.depIds = new _Set();
     this.newDepIds = new _Set();
-    this.expression = expOrFn.toString();
+    this.expression =  expOrFn.toString()
+      ;
     // parse expression for getter
     if (typeof expOrFn === 'function') {
       this.getter = expOrFn;
@@ -4484,7 +4301,7 @@ class Watcher {
       this.getter = parsePath(expOrFn);
       if (!this.getter) {
         this.getter = noop;
-        warn(
+         warn(
           `Failed watching path: "${expOrFn}" ` +
           'Watcher only accepts simple dot-delimited paths. ' +
           'For full control, use a function instead.',
@@ -4703,7 +4520,7 @@ function initProps (vm, propsOptions) {
           vm
         );
       }
-      defineReactive$$1(props, key, value, () => {
+      defineReactive(props, key, value, () => {
         if (!isRoot && !isUpdatingChildComponent) {
           warn(
             `Avoid mutating a prop directly since the value will be ` +
@@ -4732,7 +4549,7 @@ function initData (vm) {
     : data || {};
   if (!isPlainObject(data)) {
     data = {};
-    warn(
+     warn(
       'data functions should return an object:\n' +
       'https://vuejs.org/v2/guide/components.html#data-Must-Be-a-Function',
       vm
@@ -4754,7 +4571,7 @@ function initData (vm) {
       }
     }
     if (props && hasOwn(props, key)) {
-      warn(
+       warn(
         `The data property "${key}" is already declared as a prop. ` +
         `Use prop default value instead.`,
         vm
@@ -4791,7 +4608,7 @@ function initComputed (vm, computed) {
   for (const key in computed) {
     const userDef = computed[key];
     const getter = typeof userDef === 'function' ? userDef : userDef.get;
-    if (getter == null) {
+    if ( getter == null) {
       warn(
         `Getter is missing for computed property "${key}".`,
         vm
@@ -4842,7 +4659,8 @@ function defineComputed (
       : noop;
     sharedPropertyDefinition.set = userDef.set || noop;
   }
-  if (sharedPropertyDefinition.set === noop) {
+  if (
+      sharedPropertyDefinition.set === noop) {
     sharedPropertyDefinition.set = function () {
       warn(
         `Computed property "${key}" was assigned to but it has no setter.`,
@@ -4984,17 +4802,17 @@ function stateMixin (Vue) {
 
 /*  */
 
-let uid$3 = 0;
+let uid$2 = 0;
 
 function initMixin (Vue) {
   Vue.prototype._init = function (options) {
     const vm = this;
     // a uid
-    vm._uid = uid$3++;
+    vm._uid = uid$2++;
 
     let startTag, endTag;
     /* istanbul ignore if */
-    if (config.performance && mark) {
+    if ( config.performance && mark) {
       startTag = `vue-perf-start:${vm._uid}`;
       endTag = `vue-perf-end:${vm._uid}`;
       mark(startTag);
@@ -5021,24 +4839,34 @@ function initMixin (Vue) {
     }
     // expose real self
     vm._self = vm;
-    initLifecycle(vm);
-    initEvents(vm);
-    initRender(vm);
-    callHook(vm, 'beforeCreate');
-    initInjections(vm); // resolve injections before data/props
-    initState(vm);
-    initProvide(vm); // resolve provide after data/props
-    callHook(vm, 'created');
-
-    /* istanbul ignore if */
-    if (config.performance && mark) {
-      vm._name = formatComponentName(vm, false);
-      mark(endTag);
-      measure(`vue ${vm._name} init`, startTag, endTag);
+    vm._capturedContext = vm.$options && vm.$options.propsData && vm.$options.propsData.ctx || Vue.contextManager.getContext();
+    if (vm._capturedContext && vm.$options.name) {
+      vm._capturedContext = vm._capturedContext.createWithValue('VueComponent', vm.$options.name);
     }
+    let prevContext = Vue.contextManager.getContext();
+    Vue.contextManager.setContext(vm._capturedContext);
+    try {
+      initLifecycle(vm);
+      initEvents(vm);
+      initRender(vm);
+      callHook(vm, 'beforeCreate');
+      initInjections(vm); // resolve injections before data/props
+      initState(vm);
+      initProvide(vm); // resolve provide after data/props
+      callHook(vm, 'created');
 
-    if (vm.$options.el) {
-      vm.$mount(vm.$options.el);
+      /* istanbul ignore if */
+      if ("development" !== 'production' && config.performance && mark) {
+        vm._name = formatComponentName(vm, false);
+        mark(endTag);
+        measure(`vue ${vm._name} init`, startTag, endTag);
+      }
+
+      if (vm.$options.el) {
+        vm.$mount(vm.$options.el);
+      }
+    } finally {
+      Vue.contextManager.setContext(prevContext);
     }
   };
 }
@@ -5099,8 +4927,14 @@ function resolveModifiedOptions (Ctor) {
   return modified
 }
 
+Vue.contextManager = {
+  getContext: function() {},
+  setContext: function() {}
+};
+
 function Vue (options) {
-  if (!(this instanceof Vue)
+  if (
+    !(this instanceof Vue)
   ) {
     warn('Vue is a constructor and should be called with the `new` keyword');
   }
@@ -5112,6 +4946,200 @@ stateMixin(Vue);
 eventsMixin(Vue);
 lifecycleMixin(Vue);
 renderMixin(Vue);
+
+/*  */
+
+function handleError (err, vm, info) {
+  // Deactivate deps tracking while processing error handler to avoid possible infinite rendering.
+  // See: https://github.com/vuejs/vuex/issues/1505
+  pushTarget();
+  try {
+    if (vm) {
+      let cur = vm;
+      while ((cur = cur.$parent)) {
+        const hooks = cur.$options.errorCaptured;
+        if (hooks) {
+          for (let i = 0; i < hooks.length; i++) {
+            try {
+              const capture = hooks[i].call(cur, err, vm, info) === false;
+              if (capture) return
+            } catch (e) {
+              globalHandleError(e, cur, 'errorCaptured hook');
+            }
+          }
+        }
+      }
+    }
+    globalHandleError(err, vm, info);
+  } finally {
+    popTarget();
+  }
+}
+
+function invokeWithErrorHandling (
+  handler,
+  context,
+  args,
+  vm,
+  info,
+  callingContext
+) {
+  let res;
+  let prevContext = Vue.contextManager.getContext();
+  Vue.contextManager.setContext(callingContext || vm && vm._capturedContext);
+  try {
+    res = args ? handler.apply(context, args) : handler.call(context);
+    if (res && !res._isVue && isPromise(res) && !res._handled) {
+      res.catch(e => handleError(e, vm, info + ` (Promise/async)`));
+      // issue #9511
+      // avoid catch triggering multiple times when nested calls
+      res._handled = true;
+    }
+  } catch (e) {
+    handleError(e, vm, info);
+  } finally {
+    Vue.contextManager.setContext(prevContext);
+  }
+  return res
+}
+
+function globalHandleError (err, vm, info) {
+  if (config.errorHandler) {
+    try {
+      return config.errorHandler.call(null, err, vm, info)
+    } catch (e) {
+      // if the user intentionally throws the original error in the handler,
+      // do not log it twice
+      if (e !== err) {
+        logError(e, null, 'config.errorHandler');
+      }
+    }
+  }
+  logError(err, vm, info);
+}
+
+function logError (err, vm, info) {
+  {
+    warn(`Error in ${info}: "${err.toString()}"`, vm);
+  }
+  /* istanbul ignore else */
+  if ((inBrowser || inWeex) && typeof console !== 'undefined') {
+    console.error(err);
+  } else {
+    throw err
+  }
+}
+
+/*  */
+
+let isUsingMicroTask = false;
+
+const callbacks = [];
+let pending = false;
+
+function flushCallbacks () {
+  pending = false;
+  const copies = callbacks.slice(0);
+  callbacks.length = 0;
+  for (let i = 0; i < copies.length; i++) {
+    copies[i]();
+  }
+}
+
+// Here we have async deferring wrappers using microtasks.
+// In 2.5 we used (macro) tasks (in combination with microtasks).
+// However, it has subtle problems when state is changed right before repaint
+// (e.g. #6813, out-in transitions).
+// Also, using (macro) tasks in event handler would cause some weird behaviors
+// that cannot be circumvented (e.g. #7109, #7153, #7546, #7834, #8109).
+// So we now use microtasks everywhere, again.
+// A major drawback of this tradeoff is that there are some scenarios
+// where microtasks have too high a priority and fire in between supposedly
+// sequential events (e.g. #4521, #6690, which have workarounds)
+// or even between bubbling of the same event (#6566).
+let timerFunc;
+
+// The nextTick behavior leverages the microtask queue, which can be accessed
+// via either native Promise.then or MutationObserver.
+// MutationObserver has wider support, however it is seriously bugged in
+// UIWebView in iOS >= 9.3.3 when triggered in touch event handlers. It
+// completely stops working after triggering a few times... so, if native
+// Promise is available, we will use it:
+/* istanbul ignore next, $flow-disable-line */
+if (typeof Promise !== 'undefined' && isNative(Promise)) {
+  const p = Promise.resolve();
+  timerFunc = () => {
+    p.then(flushCallbacks);
+    // In problematic UIWebViews, Promise.then doesn't completely break, but
+    // it can get stuck in a weird state where callbacks are pushed into the
+    // microtask queue but the queue isn't being flushed, until the browser
+    // needs to do some other work, e.g. handle a timer. Therefore we can
+    // "force" the microtask queue to be flushed by adding an empty timer.
+    if (isIOS) setTimeout(noop);
+  };
+  isUsingMicroTask = true;
+} else if (!isIE && typeof MutationObserver !== 'undefined' && (
+  isNative(MutationObserver) ||
+  // PhantomJS and iOS 7.x
+  MutationObserver.toString() === '[object MutationObserverConstructor]'
+)) {
+  // Use MutationObserver where native Promise is not available,
+  // e.g. PhantomJS, iOS7, Android 4.4
+  // (#6466 MutationObserver is unreliable in IE11)
+  let counter = 1;
+  const observer = new MutationObserver(flushCallbacks);
+  const textNode = document.createTextNode(String(counter));
+  observer.observe(textNode, {
+    characterData: true
+  });
+  timerFunc = () => {
+    counter = (counter + 1) % 2;
+    textNode.data = String(counter);
+  };
+  isUsingMicroTask = true;
+} else if (typeof setImmediate !== 'undefined' && isNative(setImmediate)) {
+  // Fallback to setImmediate.
+  // Techinically it leverages the (macro) task queue,
+  // but it is still a better choice than setTimeout.
+  timerFunc = () => {
+    setImmediate(flushCallbacks);
+  };
+} else {
+  // Fallback to setTimeout.
+  timerFunc = () => {
+    setTimeout(flushCallbacks, 0);
+  };
+}
+
+function nextTick (cb, ctx, callingContext) {
+  let _resolve;
+  let capturedContext = callingContext || ctx && ctx._capturedContext;
+  callbacks.push(() => {
+    if (cb) {
+      let prevContext = Vue.contextManager.getContext();
+      Vue.contextManager.setContext(capturedContext);
+      try {
+        cb.call(ctx);
+      } catch (e) {
+        handleError(e, ctx, 'nextTick');
+      } finally {
+        Vue.contextManager.setContext(prevContext);
+      }
+    } else if (_resolve) {
+      _resolve(ctx);
+    }
+  });
+  if (!pending) {
+    pending = true;
+    timerFunc();
+  }
+  // $flow-disable-line
+  if (!cb && typeof Promise !== 'undefined') {
+    return new Promise(resolve => {
+      _resolve = resolve;
+    })
+  }
+}
 
 /*  */
 
@@ -5168,7 +5196,7 @@ function initExtend (Vue) {
     }
 
     const name = extendOptions.name || Super.options.name;
-    if (name) {
+    if ( name) {
       validateComponentName(name);
     }
 
@@ -5251,7 +5279,7 @@ function initAssetRegisters (Vue) {
         return this.options[type + 's'][id]
       } else {
         /* istanbul ignore if */
-        if (type === 'component') {
+        if ( type === 'component') {
           validateComponentName(id);
         }
         if (type === 'component' && isPlainObject(definition)) {
@@ -5307,9 +5335,9 @@ function pruneCacheEntry (
   keys,
   current
 ) {
-  const cached$$1 = cache[key];
-  if (cached$$1 && (!current || cached$$1.tag !== current.tag)) {
-    cached$$1.componentInstance.$destroy();
+  const cached = cache[key];
+  if (cached && (!current || cached.tag !== current.tag)) {
+    cached.componentInstance.$destroy();
   }
   cache[key] = null;
   remove(keys, key);
@@ -5416,7 +5444,7 @@ function initGlobalAPI (Vue) {
     warn,
     extend,
     mergeOptions,
-    defineReactive: defineReactive$$1
+    defineReactive
   };
 
   Vue.set = set;
@@ -5684,7 +5712,7 @@ function query (el) {
   if (typeof el === 'string') {
     const selected = document.querySelector(el);
     if (!selected) {
-      warn(
+       warn(
         'Cannot find element: ' + el
       );
       return document.createElement('div')
@@ -5754,6 +5782,7 @@ function setStyleScope (node, scopeId) {
 }
 
 var nodeOps = /*#__PURE__*/Object.freeze({
+  __proto__: null,
   createElement: createElement$1,
   createElementNS: createElementNS,
   createTextNode: createTextNode,
@@ -5883,13 +5912,13 @@ function createPatchFunction (backend) {
   }
 
   function createRmCb (childElm, listeners) {
-    function remove$$1 () {
-      if (--remove$$1.listeners === 0) {
+    function remove () {
+      if (--remove.listeners === 0) {
         removeNode(childElm);
       }
     }
-    remove$$1.listeners = listeners;
-    return remove$$1
+    remove.listeners = listeners;
+    return remove
   }
 
   function removeNode (el) {
@@ -5900,7 +5929,7 @@ function createPatchFunction (backend) {
     }
   }
 
-  function isUnknownElement$$1 (vnode, inVPre) {
+  function isUnknownElement (vnode, inVPre) {
     return (
       !inVPre &&
       !vnode.ns &&
@@ -5949,7 +5978,7 @@ function createPatchFunction (backend) {
         if (data && data.pre) {
           creatingElmInVPre++;
         }
-        if (isUnknownElement$$1(vnode, creatingElmInVPre)) {
+        if (isUnknownElement(vnode, creatingElmInVPre)) {
           warn(
             'Unknown custom element: <' + tag + '> - did you ' +
             'register the component correctly? For recursive components, ' +
@@ -5973,7 +6002,7 @@ function createPatchFunction (backend) {
         insert(parentElm, vnode.elm, refElm);
       }
 
-      if (data && data.pre) {
+      if ( data && data.pre) {
         creatingElmInVPre--;
       }
     } else if (isTrue(vnode.isComment)) {
@@ -6047,11 +6076,11 @@ function createPatchFunction (backend) {
     insert(parentElm, vnode.elm, refElm);
   }
 
-  function insert (parent, elm, ref$$1) {
+  function insert (parent, elm, ref) {
     if (isDef(parent)) {
-      if (isDef(ref$$1)) {
-        if (nodeOps.parentNode(ref$$1) === parent) {
-          nodeOps.insertBefore(parent, elm, ref$$1);
+      if (isDef(ref)) {
+        if (nodeOps.parentNode(ref) === parent) {
+          nodeOps.insertBefore(parent, elm, ref);
         }
       } else {
         nodeOps.appendChild(parent, elm);
@@ -6405,7 +6434,8 @@ function createPatchFunction (backend) {
           if (isDef(i = data) && isDef(i = i.domProps) && isDef(i = i.innerHTML)) {
             if (i !== elm.innerHTML) {
               /* istanbul ignore if */
-              if (typeof console !== 'undefined' &&
+              if (
+                typeof console !== 'undefined' &&
                 !hydrationBailed
               ) {
                 hydrationBailed = true;
@@ -6430,7 +6460,8 @@ function createPatchFunction (backend) {
             // longer than the virtual children list.
             if (!childrenMatch || childNode) {
               /* istanbul ignore if */
-              if (typeof console !== 'undefined' &&
+              if (
+                typeof console !== 'undefined' &&
                 !hydrationBailed
               ) {
                 hydrationBailed = true;
@@ -6465,7 +6496,7 @@ function createPatchFunction (backend) {
   function assertNodeMatch (node, vnode, inVPre) {
     if (isDef(vnode.tag)) {
       return vnode.tag.indexOf('vue-component') === 0 || (
-        !isUnknownElement$$1(vnode, inVPre) &&
+        !isUnknownElement(vnode, inVPre) &&
         vnode.tag.toLowerCase() === (node.tagName && node.tagName.toLowerCase())
       )
     } else {
@@ -7017,7 +7048,7 @@ function addHandler (
   // warn prevent and passive modifier
   /* istanbul ignore if */
   if (
-    warn &&
+     warn &&
     modifiers.prevent && modifiers.passive
   ) {
     warn(
@@ -7941,20 +7972,20 @@ function removeClass (el, cls) {
 
 /*  */
 
-function resolveTransition (def$$1) {
-  if (!def$$1) {
+function resolveTransition (def) {
+  if (!def) {
     return
   }
   /* istanbul ignore else */
-  if (typeof def$$1 === 'object') {
+  if (typeof def === 'object') {
     const res = {};
-    if (def$$1.css !== false) {
-      extend(res, autoCssTransition(def$$1.name || 'v'));
+    if (def.css !== false) {
+      extend(res, autoCssTransition(def.name || 'v'));
     }
-    extend(res, def$$1);
+    extend(res, def);
     return res
-  } else if (typeof def$$1 === 'string') {
-    return autoCssTransition(def$$1)
+  } else if (typeof def === 'string') {
+    return autoCssTransition(def)
   }
 }
 
@@ -8208,7 +8239,7 @@ function enter (vnode, toggleDisplay) {
       : duration
   );
 
-  if (explicitEnterDuration != null) {
+  if ( explicitEnterDuration != null) {
     checkDuration(explicitEnterDuration, 'enter', vnode);
   }
 
@@ -8318,7 +8349,7 @@ function leave (vnode, rm) {
       : duration
   );
 
-  if (isDef(explicitLeaveDuration)) {
+  if ( isDef(explicitLeaveDuration)) {
     checkDuration(explicitLeaveDuration, 'leave', vnode);
   }
 
@@ -8545,7 +8576,7 @@ function actuallySetSelected (el, binding, vm) {
   const value = binding.value;
   const isMultiple = el.multiple;
   if (isMultiple && !Array.isArray(value)) {
-    warn(
+     warn(
       `<select multiple v-model="${binding.expression}"> ` +
       `expects an Array value for its binding, but got ${
         Object.prototype.toString.call(value).slice(8, -1)
@@ -8615,10 +8646,10 @@ function locateNode (vnode) {
 var show = {
   bind (el, { value }, vnode) {
     vnode = locateNode(vnode);
-    const transition$$1 = vnode.data && vnode.data.transition;
+    const transition = vnode.data && vnode.data.transition;
     const originalDisplay = el.__vOriginalDisplay =
       el.style.display === 'none' ? '' : el.style.display;
-    if (value && transition$$1) {
+    if (value && transition) {
       vnode.data.show = true;
       enter(vnode, () => {
         el.style.display = originalDisplay;
@@ -8632,8 +8663,8 @@ var show = {
     /* istanbul ignore if */
     if (!value === !oldValue) return
     vnode = locateNode(vnode);
-    const transition$$1 = vnode.data && vnode.data.transition;
-    if (transition$$1) {
+    const transition = vnode.data && vnode.data.transition;
+    if (transition) {
       vnode.data.show = true;
       if (value) {
         enter(vnode, () => {
@@ -8757,7 +8788,7 @@ var Transition = {
     }
 
     // warn multiple elements
-    if (children.length > 1) {
+    if ( children.length > 1) {
       warn(
         '<transition> can only be used on a single element. Use ' +
         '<transition-group> for lists.',
@@ -8768,7 +8799,8 @@ var Transition = {
     const mode = this.mode;
 
     // warn invalid mode
-    if (mode && mode !== 'in-out' && mode !== 'out-in'
+    if (
+      mode && mode !== 'in-out' && mode !== 'out-in'
     ) {
       warn(
         'invalid <transition> mode: ' + mode,
@@ -9065,7 +9097,8 @@ if (inBrowser) {
         );
       }
     }
-    if (config.productionTip !== false &&
+    if (
+      config.productionTip !== false &&
       typeof console !== 'undefined'
     ) {
       console[console.info ? 'info' : 'log'](
@@ -9130,7 +9163,7 @@ function parseText (
 function transformNode (el, options) {
   const warn = options.warn || baseWarn;
   const staticClass = getAndRemoveAttr(el, 'class');
-  if (staticClass) {
+  if ( staticClass) {
     const res = parseText(staticClass, options.delimiters);
     if (res) {
       warn(
@@ -9293,8 +9326,8 @@ function decodeAttr (value, shouldDecodeNewlines) {
 function parseHTML (html, options) {
   const stack = [];
   const expectHTML = options.expectHTML;
-  const isUnaryTag$$1 = options.isUnaryTag || no;
-  const canBeLeftOpenTag$$1 = options.canBeLeftOpenTag || no;
+  const isUnaryTag = options.isUnaryTag || no;
+  const canBeLeftOpenTag = options.canBeLeftOpenTag || no;
   let index = 0;
   let last, lastTag;
   while (html) {
@@ -9408,7 +9441,7 @@ function parseHTML (html, options) {
 
     if (html === last) {
       options.chars && options.chars(html);
-      if (!stack.length && options.warn) {
+      if ( !stack.length && options.warn) {
         options.warn(`Mal-formatted tag at end of template: "${html}"`, { start: index + html.length });
       }
       break
@@ -9456,12 +9489,12 @@ function parseHTML (html, options) {
       if (lastTag === 'p' && isNonPhrasingTag(tagName)) {
         parseEndTag(lastTag);
       }
-      if (canBeLeftOpenTag$$1(tagName) && lastTag === tagName) {
+      if (canBeLeftOpenTag(tagName) && lastTag === tagName) {
         parseEndTag(tagName);
       }
     }
 
-    const unary = isUnaryTag$$1(tagName) || !!unarySlash;
+    const unary = isUnaryTag(tagName) || !!unarySlash;
 
     const l = match.attrs.length;
     const attrs = new Array(l);
@@ -9475,7 +9508,7 @@ function parseHTML (html, options) {
         name: args[1],
         value: decodeAttr(value, shouldDecodeNewlines)
       };
-      if (options.outputSourceRange) {
+      if ( options.outputSourceRange) {
         attrs[i].start = args.start + args[0].match(/^\s*/).length;
         attrs[i].end = args.end;
       }
@@ -9512,7 +9545,8 @@ function parseHTML (html, options) {
     if (pos >= 0) {
       // Close all the open elements, up the stack
       for (let i = stack.length - 1; i >= pos; i--) {
-        if (i > pos || !tagName &&
+        if (
+          (i > pos || !tagName) &&
           options.warn
         ) {
           options.warn(
@@ -9546,7 +9580,7 @@ function parseHTML (html, options) {
 /*  */
 
 const onRE = /^@|^v-on:/;
-const dirRE = /^v-|^@|^:/;
+const dirRE =  /^v-|^@|^:/;
 const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/;
 const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/;
 const stripParensRE = /^\(|\)$/g;
@@ -9772,7 +9806,7 @@ function parse (
 
       if (isForbiddenTag(element) && !isServerRendering()) {
         element.forbidden = true;
-        warn$2(
+         warn$2(
           'Templates should only be responsible for mapping the state to the ' +
           'UI. Avoid placing tags with side-effects in your templates, such as ' +
           `<${tag}>` + ', as they will not be parsed.',
@@ -9823,7 +9857,7 @@ function parse (
       // pop stack
       stack.length -= 1;
       currentParent = stack[stack.length - 1];
-      if (options.outputSourceRange) {
+      if ( options.outputSourceRange) {
         element.end = end;
       }
       closeElement(element);
@@ -9892,7 +9926,7 @@ function parse (
           };
         }
         if (child) {
-          if (options.outputSourceRange) {
+          if ( options.outputSourceRange) {
             child.start = start;
             child.end = end;
           }
@@ -9909,7 +9943,7 @@ function parse (
           text,
           isComment: true
         };
-        if (options.outputSourceRange) {
+        if ( options.outputSourceRange) {
           child.start = start;
           child.end = end;
         }
@@ -10084,7 +10118,7 @@ function findPrevElement (children) {
     if (children[i].type === 1) {
       return children[i]
     } else {
-      if (children[i].text !== ' ') {
+      if ( children[i].text !== ' ') {
         warn$2(
           `text "${children[i].text.trim()}" between v-if and v-else(-if) ` +
           `will be ignored.`,
@@ -10104,8 +10138,8 @@ function addIfCondition (el, condition) {
 }
 
 function processOnce (el) {
-  const once$$1 = getAndRemoveAttr(el, 'v-once');
-  if (once$$1 != null) {
+  const once = getAndRemoveAttr(el, 'v-once');
+  if (once != null) {
     el.once = true;
   }
 }
@@ -10117,7 +10151,7 @@ function processSlotContent (el) {
   if (el.tag === 'template') {
     slotScope = getAndRemoveAttr(el, 'scope');
     /* istanbul ignore if */
-    if (slotScope) {
+    if ( slotScope) {
       warn$2(
         `the "scope" attribute for scoped slots have been deprecated and ` +
         `replaced by "slot-scope" since 2.5. The new "slot-scope" attribute ` +
@@ -10130,7 +10164,7 @@ function processSlotContent (el) {
     el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope');
   } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) {
     /* istanbul ignore if */
-    if (el.attrsMap['v-for']) {
+    if ( el.attrsMap['v-for']) {
       warn$2(
         `Ambiguous combined usage of slot-scope and v-for on <${el.tag}> ` +
         `(v-for takes higher priority). Use a wrapper <template> for the ` +
@@ -10250,7 +10284,7 @@ function getSlotName (binding) {
 function processSlotOutlet (el) {
   if (el.tag === 'slot') {
     el.slotName = getBindingAttr(el, 'name');
-    if (el.key) {
+    if ( el.key) {
       warn$2(
         `\`key\` does not work on <slot> because slots are abstract outlets ` +
         `and can possibly expand into multiple elements. ` +
@@ -10294,6 +10328,7 @@ function processAttrs (el) {
           name = name.slice(1, -1);
         }
         if (
+          
           value.trim().length === 0
         ) {
           warn$2(
@@ -10374,7 +10409,7 @@ function processAttrs (el) {
           }
         }
         addDirective(el, name, rawName, value, arg, isDynamic, modifiers, list[i]);
-        if (name === 'model') {
+        if ( name === 'model') {
           checkForAliasModel(el, value);
         }
       }
@@ -10428,6 +10463,7 @@ function makeAttrsMap (attrs) {
   const map = {};
   for (let i = 0, l = attrs.length; i < l; i++) {
     if (
+      
       map[attrs[i].name] && !isIE && !isEdge
     ) {
       warn$2('duplicate attribute: ' + attrs[i].name, attrs[i]);
@@ -10895,7 +10931,7 @@ function genFilterCode (key) {
 /*  */
 
 function on (el, dir) {
-  if (dir.modifiers) {
+  if ( dir.modifiers) {
     warn(`v-on without argument does not support modifiers.`);
   }
   el.wrapListeners = (code) => `_g(${code},${dir.value})`;
@@ -11044,7 +11080,7 @@ function genOnce (el, state) {
       parent = parent.parent;
     }
     if (!key) {
-      state.warn(
+       state.warn(
         `v-once can only be used inside v-for that is keyed. `,
         el.rawAttrsMap['v-once']
       );
@@ -11108,7 +11144,8 @@ function genFor (
   const iterator1 = el.iterator1 ? `,${el.iterator1}` : '';
   const iterator2 = el.iterator2 ? `,${el.iterator2}` : '';
 
-  if (state.maybeComponent(el) &&
+  if (
+    state.maybeComponent(el) &&
     el.tag !== 'slot' &&
     el.tag !== 'template' &&
     !el.key
@@ -11252,7 +11289,9 @@ function genDirectives (el, state) {
 
 function genInlineTemplate (el, state) {
   const ast = el.children[0];
-  if (el.children.length !== 1 || ast.type !== 1) {
+  if ( (
+    el.children.length !== 1 || ast.type !== 1
+  )) {
     state.warn(
       'Inline-template components must have exactly one child element.',
       { start: el.start }
@@ -11466,15 +11505,15 @@ function genSlot (el, state) {
         dynamic: attr.dynamic
       })))
     : null;
-  const bind$$1 = el.attrsMap['v-bind'];
-  if ((attrs || bind$$1) && !children) {
+  const bind = el.attrsMap['v-bind'];
+  if ((attrs || bind) && !children) {
     res += `,null`;
   }
   if (attrs) {
     res += `,${attrs}`;
   }
-  if (bind$$1) {
-    res += `${attrs ? '' : ',null'},${bind$$1}`;
+  if (bind) {
+    res += `${attrs ? '' : ',null'},${bind}`;
   }
   return res + ')'
 }
@@ -11496,7 +11535,7 @@ function genProps (props) {
   let dynamicProps = ``;
   for (let i = 0; i < props.length; i++) {
     const prop = props[i];
-    const value = transformSpecialNewlines(prop.value);
+    const value =  transformSpecialNewlines(prop.value);
     if (prop.dynamic) {
       dynamicProps += `${prop.name},${value},`;
     } else {
@@ -11703,7 +11742,7 @@ function createCompileToFunctionFn (compile) {
     vm
   ) {
     options = extend({}, options);
-    const warn$$1 = options.warn || warn;
+    const warn$1 = options.warn || warn;
     delete options.warn;
 
     /* istanbul ignore if */
@@ -11713,7 +11752,7 @@ function createCompileToFunctionFn (compile) {
         new Function('return 1');
       } catch (e) {
         if (e.toString().match(/unsafe-eval|CSP/)) {
-          warn$$1(
+          warn$1(
             'It seems you are using the standalone build of Vue.js in an ' +
             'environment with Content Security Policy that prohibits unsafe-eval. ' +
             'The template compiler cannot work in this environment. Consider ' +
@@ -11740,14 +11779,14 @@ function createCompileToFunctionFn (compile) {
       if (compiled.errors && compiled.errors.length) {
         if (options.outputSourceRange) {
           compiled.errors.forEach(e => {
-            warn$$1(
+            warn$1(
               `Error compiling template:\n\n${e.msg}\n\n` +
               generateCodeFrame(template, e.start, e.end),
               vm
             );
           });
         } else {
-          warn$$1(
+          warn$1(
             `Error compiling template:\n\n${template}\n\n` +
             compiled.errors.map(e => `- ${e}`).join('\n') + '\n',
             vm
@@ -11777,7 +11816,7 @@ function createCompileToFunctionFn (compile) {
     /* istanbul ignore if */
     {
       if ((!compiled.errors || !compiled.errors.length) && fnGenErrors.length) {
-        warn$$1(
+        warn$1(
           `Failed to generate render function:\n\n` +
           fnGenErrors.map(({ err, code }) => `${err.toString()} in\n\n${code}\n`).join('\n'),
           vm
@@ -11806,7 +11845,7 @@ function createCompilerCreator (baseCompile) {
       };
 
       if (options) {
-        if (options.outputSourceRange) {
+        if ( options.outputSourceRange) {
           // $flow-disable-line
           const leadingSpaceLength = template.match(/^\s*/)[0].length;
 
@@ -11917,7 +11956,7 @@ Vue.prototype.$mount = function (
 
   /* istanbul ignore if */
   if (el === document.body || el === document.documentElement) {
-    warn(
+     warn(
       `Do not mount Vue to <html> or <body> - mount to normal elements instead.`
     );
     return this
@@ -11932,7 +11971,7 @@ Vue.prototype.$mount = function (
         if (template.charAt(0) === '#') {
           template = idToTemplate(template);
           /* istanbul ignore if */
-          if (!template) {
+          if ( !template) {
             warn(
               `Template element not found or is empty: ${options.template}`,
               this
@@ -11952,7 +11991,7 @@ Vue.prototype.$mount = function (
     }
     if (template) {
       /* istanbul ignore if */
-      if (config.performance && mark) {
+      if ( config.performance && mark) {
         mark('compile');
       }
 
@@ -11967,7 +12006,7 @@ Vue.prototype.$mount = function (
       options.staticRenderFns = staticRenderFns;
 
       /* istanbul ignore if */
-      if (config.performance && mark) {
+      if ( config.performance && mark) {
         mark('compile end');
         measure(`vue ${this._name} compile`, 'compile', 'compile end');
       }

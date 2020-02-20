@@ -49,24 +49,34 @@ export function initMixin (Vue: Class<Component>) {
     }
     // expose real self
     vm._self = vm
-    initLifecycle(vm)
-    initEvents(vm)
-    initRender(vm)
-    callHook(vm, 'beforeCreate')
-    initInjections(vm) // resolve injections before data/props
-    initState(vm)
-    initProvide(vm) // resolve provide after data/props
-    callHook(vm, 'created')
-
-    /* istanbul ignore if */
-    if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
-      vm._name = formatComponentName(vm, false)
-      mark(endTag)
-      measure(`vue ${vm._name} init`, startTag, endTag)
+    vm._capturedContext = vm.$options && vm.$options.propsData && vm.$options.propsData.ctx || Vue.contextManager.getContext();
+    if (vm._capturedContext && vm.$options.name) {
+      vm._capturedContext = vm._capturedContext.createWithValue('VueComponent', vm.$options.name);
     }
+    let prevContext = Vue.contextManager.getContext();
+    Vue.contextManager.setContext(vm._capturedContext);
+    try {
+      initLifecycle(vm)
+      initEvents(vm)
+      initRender(vm)
+      callHook(vm, 'beforeCreate')
+      initInjections(vm) // resolve injections before data/props
+      initState(vm)
+      initProvide(vm) // resolve provide after data/props
+      callHook(vm, 'created')
 
-    if (vm.$options.el) {
-      vm.$mount(vm.$options.el)
+      /* istanbul ignore if */
+      if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
+        vm._name = formatComponentName(vm, false)
+        mark(endTag)
+        measure(`vue ${vm._name} init`, startTag, endTag)
+      }
+
+      if (vm.$options.el) {
+        vm.$mount(vm.$options.el)
+      }
+    } finally {
+      Vue.contextManager.setContext(prevContext);
     }
   }
 }

@@ -8,6 +8,7 @@ import { updateComponentListeners } from './events'
 import { resolveSlots } from './render-helpers/resolve-slots'
 import { toggleObserving } from '../observer/index'
 import { pushTarget, popTarget } from '../observer/dep'
+import Vue from './index';
 
 import {
   warn,
@@ -187,7 +188,13 @@ export function mountComponent (
     }
   } else {
     updateComponent = () => {
-      vm._update(vm._render(), hydrating)
+      let prevContext = Vue.contextManager.getContext();
+      Vue.contextManager.setContext(vm && vm._capturedContext);
+      try {
+        vm._update(vm._render(), hydrating)
+      } finally {
+        Vue.contextManager.setContext(prevContext);
+      }
     }
   }
 
