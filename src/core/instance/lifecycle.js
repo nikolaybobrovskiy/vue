@@ -345,13 +345,19 @@ export function callHook (vm: Component, hook: string) {
   pushTarget()
   const handlers = vm.$options[hook]
   const info = `${hook} hook`
-  if (handlers) {
-    for (let i = 0, j = handlers.length; i < j; i++) {
-      invokeWithErrorHandling(handlers[i], vm, null, vm, info)
+  let prevContext = Vue.contextManager.getContext();
+  Vue.contextManager.setContext(vm && vm._capturedContext);
+  try {
+    if (handlers) {
+      for (let i = 0, j = handlers.length; i < j; i++) {
+        invokeWithErrorHandling(handlers[i], vm, null, vm, info)
+      }
     }
+    if (vm._hasHookEvent) {
+      vm.$emit('hook:' + hook)
+    }
+    popTarget()
+  } finally {
+    Vue.contextManager.setContext(prevContext);
   }
-  if (vm._hasHookEvent) {
-    vm.$emit('hook:' + hook)
-  }
-  popTarget()
 }

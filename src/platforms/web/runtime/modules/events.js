@@ -110,7 +110,7 @@ function updateDOMListeners (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const oldOn = oldVnode.data.on || {}
   target = vnode.elm
   normalizeEvents(on)
-  updateListeners(on, oldOn, add, remove, createOnceHandler, vnode.context)
+  updateListeners(on, oldOn, add, remove, createOnceHandler, vnode.context, true)
   target = undefined
 }
 

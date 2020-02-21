@@ -1849,12 +1849,9 @@
     context,
     args,
     vm,
-    info,
-    callingContext
+    info
   ) {
     var res;
-    var prevContext = Vue.contextManager.getContext();
-    Vue.contextManager.setContext(callingContext || vm && vm._capturedContext);
     try {
       res = args ? handler.apply(context, args) : handler.call(context);
       if (res && !res._isVue && isPromise(res) && !res._handled) {
@@ -1865,8 +1862,6 @@
       }
     } catch (e) {
       handleError(e, vm, info);
-    } finally {
-      Vue.contextManager.setContext(prevContext);
     }
     return res
   }
@@ -2199,7 +2194,8 @@
     add,
     remove,
     createOnceHandler,
-    vm
+    vm,
+    useCapturedContext
   ) {
     var name, def, cur, old, event;
     for (name in on) {
@@ -2217,6 +2213,18 @@
         }
         if (isTrue(event.once)) {
           cur = on[name] = createOnceHandler(event.name, cur, event.capture);
+        }
+        if (useCapturedContext && vm) {
+          var originalCur = cur;
+          cur = function () {
+            var prevContext = Vue.contextManager.getContext();
+            Vue.contextManager.setContext(vm._capturedContext);
+            try {
+              originalCur.apply(null, arguments);
+            } finally {
+              Vue.contextManager.setContext(prevContext);
+            }
+          };
         }
         add(event.name, cur, event.capture, event.passive, event.params);
       } else if (cur !== old) {
@@ -3875,7 +3883,7 @@
         var args = toArray(arguments, 1);
         var info = "event handler for \"" + event + "\"";
         for (var i = 0, l = cbs.length; i < l; i++) {
-          invokeWithErrorHandling(cbs[i], vm, args, vm, info, Vue.contextManager.getContext());
+          invokeWithErrorHandling(cbs[i], vm, args, vm, info);
         }
       }
       return vm
@@ -4210,15 +4218,21 @@
     pushTarget();
     var handlers = vm.$options[hook];
     var info = hook + " hook";
-    if (handlers) {
-      for (var i = 0, j = handlers.length; i < j; i++) {
-        invokeWithErrorHandling(handlers[i], vm, null, vm, info);
+    var prevContext = Vue.contextManager.getContext();
+    Vue.contextManager.setContext(vm && vm._capturedContext);
+    try {
+      if (handlers) {
+        for (var i = 0, j = handlers.length; i < j; i++) {
+          invokeWithErrorHandling(handlers[i], vm, null, vm, info);
+        }
       }
+      if (vm._hasHookEvent) {
+        vm.$emit('hook:' + hook);
+      }
+      popTarget();
+    } finally {
+      Vue.contextManager.setContext(prevContext);
     }
-    if (vm._hasHookEvent) {
-      vm.$emit('hook:' + hook);
-    }
-    popTarget();
   }
 
   /*  */
@@ -6949,7 +6963,7 @@
     var oldOn = oldVnode.data.on || {};
     target$1 = vnode.elm;
     normalizeEvents(on);
-    updateListeners(on, oldOn, add$1, remove$2, createOnceHandler$1, vnode.context);
+    updateListeners(on, oldOn, add$1, remove$2, createOnceHandler$1, vnode.context, true);
     target$1 = undefined;
   }
 

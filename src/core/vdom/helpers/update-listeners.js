@@ -10,6 +10,7 @@ import {
   isTrue,
   isPlainObject
 } from 'shared/util'
+import Vue from '../../instance/index';
 
 const normalizeEvent = cached((name: string): {
   name: string,
@@ -56,7 +57,8 @@ export function updateListeners (
   add: Function,
   remove: Function,
   createOnceHandler: Function,
-  vm: Component
+  vm: Component,
+  useCapturedContext: Boolean
 ) {
   let name, def, cur, old, event
   for (name in on) {
@@ -79,6 +81,18 @@ export function updateListeners (
       }
       if (isTrue(event.once)) {
         cur = on[name] = createOnceHandler(event.name, cur, event.capture)
+      }
+      if (useCapturedContext && vm) {
+        let originalCur = cur;
+        cur = function () {
+          let prevContext = Vue.contextManager.getContext();
+          Vue.contextManager.setContext(vm._capturedContext);
+          try {
+            originalCur.apply(null, arguments);
+          } finally {
+            Vue.contextManager.setContext(prevContext);
+          }
+        }
       }
       add(event.name, cur, event.capture, event.passive, event.params)
     } else if (cur !== old) {

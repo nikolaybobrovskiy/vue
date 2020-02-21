@@ -5,7 +5,6 @@ import { warn } from './debug'
 import { inBrowser, inWeex } from './env'
 import { isPromise } from 'shared/util'
 import { pushTarget, popTarget } from '../observer/dep'
-import Vue from '../instance/index';
 
 export function handleError (err: Error, vm: any, info: string) {
   // Deactivate deps tracking while processing error handler to avoid possible infinite rendering.
@@ -39,12 +38,9 @@ export function invokeWithErrorHandling (
   context: any,
   args: null | any[],
   vm: any,
-  info: string,
-  callingContext?: Object
+  info: string
 ) {
   let res
-  let prevContext = Vue.contextManager.getContext();
-  Vue.contextManager.setContext(callingContext || vm && vm._capturedContext);
   try {
     res = args ? handler.apply(context, args) : handler.call(context)
     if (res && !res._isVue && isPromise(res) && !res._handled) {
@@ -55,8 +51,6 @@ export function invokeWithErrorHandling (
     }
   } catch (e) {
     handleError(e, vm, info)
-  } finally {
-    Vue.contextManager.setContext(prevContext);
   }
   return res
 }
