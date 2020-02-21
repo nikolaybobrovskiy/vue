@@ -5,6 +5,7 @@ import { updateListeners } from 'core/vdom/helpers/index'
 import { isIE, isFF, supportsPassive, isUsingMicroTask } from 'core/util/index'
 import { RANGE_TOKEN, CHECKBOX_RADIO_TOKEN } from 'web/compiler/directives/model'
 import { currentFlushTimestamp } from 'core/observer/scheduler'
+import Vue from 'core/instance/index';
 
 // normalize v-model event tokens that can only be determined at runtime.
 // it's important to place the event as the first in the array because
@@ -29,12 +30,18 @@ function normalizeEvents (on) {
 
 let target: any
 
-function createOnceHandler (event, handler, capture) {
+function createOnceHandler (event, handler, capture, vm) {
   const _target = target // save current target element in closure
   return function onceHandler () {
-    const res = handler.apply(null, arguments)
-    if (res !== null) {
-      remove(event, onceHandler, capture, _target)
+    let prevContext = Vue.contextManager.getContext();
+    Vue.contextManager.setContext(vm && vm._capturedContext);
+    try {
+      const res = handler.apply(null, arguments)
+      if (res !== null) {
+        remove(event, onceHandler, capture, _target)
+      }
+    } finally {
+      Vue.contextManager.setContext(prevContext);
     }
   }
 }

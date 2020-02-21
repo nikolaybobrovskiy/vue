@@ -2293,19 +2293,25 @@
     }
   });
 
-  function createFnInvoker (fns, vm) {
+  function createFnInvoker (fns, vm, useCapturedContext) {
     function invoker () {
       var arguments$1 = arguments;
 
-      var fns = invoker.fns;
-      if (Array.isArray(fns)) {
-        var cloned = fns.slice();
-        for (var i = 0; i < cloned.length; i++) {
-          invokeWithErrorHandling(cloned[i], null, arguments$1, vm, "v-on handler");
+      var prevContext = Vue.contextManager.getContext();
+      Vue.contextManager.setContext(useCapturedContext && vm && vm._capturedContext);
+      try {
+        var fns = invoker.fns;
+        if (Array.isArray(fns)) {
+          var cloned = fns.slice();
+          for (var i = 0; i < cloned.length; i++) {
+            invokeWithErrorHandling(cloned[i], null, arguments$1, vm, "v-on handler");
+          }
+        } else {
+          // return handler return value for single handlers
+          return invokeWithErrorHandling(fns, null, arguments, vm, "v-on handler")
         }
-      } else {
-        // return handler return value for single handlers
-        return invokeWithErrorHandling(fns, null, arguments, vm, "v-on handler")
+      } finally {
+        Vue.contextManager.setContext(prevContext);
       }
     }
     invoker.fns = fns;
@@ -2333,22 +2339,10 @@
         );
       } else if (isUndef(old)) {
         if (isUndef(cur.fns)) {
-          cur = on[name] = createFnInvoker(cur, vm);
+          cur = on[name] = createFnInvoker(cur, vm, useCapturedContext);
         }
         if (isTrue(event.once)) {
-          cur = on[name] = createOnceHandler(event.name, cur, event.capture);
-        }
-        if (useCapturedContext && vm) {
-          var originalCur = cur;
-          cur = function () {
-            var prevContext = Vue.contextManager.getContext();
-            Vue.contextManager.setContext(vm._capturedContext);
-            try {
-              originalCur.apply(null, arguments);
-            } finally {
-              Vue.contextManager.setContext(prevContext);
-            }
-          };
+          cur = on[name] = createOnceHandler(event.name, cur, event.capture, vm);
         }
         add(event.name, cur, event.capture, event.passive, event.params);
       } else if (cur !== old) {
