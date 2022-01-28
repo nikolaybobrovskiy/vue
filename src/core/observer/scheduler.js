@@ -3,6 +3,7 @@
 import type Watcher from './watcher'
 import config from '../config'
 import { callHook, activateChildComponent } from '../instance/lifecycle'
+import Vue from '../instance/index'
 
 import {
   warn,
@@ -184,7 +185,7 @@ export function queueWatcher (watcher: Watcher) {
         flushSchedulerQueue()
         return
       }
-      nextTick(flushSchedulerQueue)
+      nextTick(flushSchedulerQueue, void 0, Vue.contextManager.getContext())
     }
   }
 }
