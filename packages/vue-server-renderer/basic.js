@@ -4393,7 +4393,7 @@
           flushSchedulerQueue();
           return
         }
-        nextTick(flushSchedulerQueue);
+        nextTick(flushSchedulerQueue, void 0, Vue.contextManager.getContext());
       }
     }
   }

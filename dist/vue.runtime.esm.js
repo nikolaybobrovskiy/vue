@@ -1,6 +1,6 @@
 /*!
  * Vue.js v2.6.10
- * (c) 2014-2020 Evan You
+ * (c) 2014-2022 Evan You
  * Released under the MIT License.
  */
 /*  */
@@ -4407,7 +4407,7 @@ function queueWatcher (watcher) {
         flushSchedulerQueue();
         return
       }
-      nextTick(flushSchedulerQueue);
+      nextTick(flushSchedulerQueue, void 0, Vue.contextManager.getContext());
     }
   }
 }
